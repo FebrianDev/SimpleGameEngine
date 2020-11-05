@@ -6,6 +6,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Point;
 import android.os.Bundle;
@@ -30,6 +31,16 @@ public class MainActivity extends Activity {
 
     class GameView extends SurfaceView implements Runnable {
         int width, height, Xmax;
+
+        //untuk mengakses index array bitmap
+        int i = 0;
+        //variable untuk set waktu saat berganti frame
+        float timer;
+
+        //variable untuk mengcek kondisi pas flip
+        boolean isFlip = false;
+        //variable untuk menyimpan value slip
+        float flip = 1.0f;
         // This is our thread
         Thread gameThread = null;
 
@@ -52,8 +63,17 @@ public class MainActivity extends Activity {
         // This is used to help calculate the fps
         private long timeThisFrame;
 
-        // Declare an object of type Bitmap
-        Bitmap bitmapBob;
+        // Simpan sprite pada array object bitmap
+        Bitmap bitmapBob[] = {
+                Bitmap.createScaledBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.run0), 120, 120, false),
+                Bitmap.createScaledBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.run1), 120, 120, false),
+                Bitmap.createScaledBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.run2), 120, 120, false),
+                Bitmap.createScaledBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.run3), 120, 120, false),
+                Bitmap.createScaledBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.run4), 120, 120, false),
+                Bitmap.createScaledBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.run5), 120, 120, false),
+                Bitmap.createScaledBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.run6), 120, 120, false),
+                Bitmap.createScaledBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.run7), 120, 120, false)
+        };
 
         // Bob starts off not moving
         boolean isMoving = false;
@@ -76,7 +96,7 @@ public class MainActivity extends Activity {
             paint = new Paint();
 
             // Load Bob from his .png file
-            bitmapBob = BitmapFactory.decodeResource(this.getResources(), R.drawable.bob);
+            // bitmapBob[0] = Bitmap.createScaledBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.run0), 120, 120, false);
 
             // Set our boolean to true - game on!
             playing = true;
@@ -109,12 +129,11 @@ public class MainActivity extends Activity {
                 // We can then use the result to
                 // time animations and more.
                 timeThisFrame = System.currentTimeMillis() - startFrameTime;
+
                 if (timeThisFrame > 0) {
                     fps = 1000 / timeThisFrame;
                 }
-
             }
-
         }
 
         // Everything that needs to be updated goes in here
@@ -124,16 +143,34 @@ public class MainActivity extends Activity {
             // If bob is moving (the player is touching the screen)
             // then move him to the right based on his target speed and the current fps.
             if (isMoving) {
+                //tambahkan timer dengan fps
+                timer += timeThisFrame;
+                //jika timer lebih besar dari 60 milisecond
+                if (timer > 60) {
+                    //increment i untuk mengakses index selanjutnya dari array bitmap
+                    i++;
+                    //set timer menjadi 0 agar proses pergantian frame bisa berulang
+                    timer = 0;
+                }
                 bobXPosition = bobXPosition + (walkSpeedPerSecond / fps);
-                if (bobXPosition >= Xmax - 80 || bobXPosition <= 0)
-                    walkSpeedPerSecond *= -1;
-            }
 
+                //jika posisi object/bitmap berada di batas layar kanan atau kiri set isFlip menjadi true
+                if (bobXPosition >= Xmax - 80 || bobXPosition <= 0) {
+                    walkSpeedPerSecond *= -1;
+                    isFlip = true;
+                } else {
+                    isFlip = false;
+                }
+
+                //Jika i sama dengan panjang index array bitmap, maka set i menjadi 0 untuk mengulang proses animasi
+                if (i == bitmapBob.length) {
+                    i = 0;
+                }
+            }
         }
 
         // Draw the newly updated scene
         public void draw() {
-
             // Make sure our drawing surface is valid or we crash
             if (ourHolder.getSurface().isValid()) {
                 // Lock the canvas ready to draw
@@ -151,13 +188,27 @@ public class MainActivity extends Activity {
                 // Display the current fps on the screen
                 canvas.drawText("FPS:" + fps, 20, 40, paint);
 
-                // Draw bob at bobXPosition, 200 pixels
-                canvas.drawBitmap(bitmapBob, bobXPosition, 200, paint);
+                //Inisialisasi object bitmap yang menyimpan method flipImage
+                Bitmap bob = flipImage(bitmapBob[i]);
+
+                //Draw Bitmap
+                canvas.drawBitmap(bob, bobXPosition, 200, paint);
 
                 // Draw everything to the screen
                 ourHolder.unlockCanvasAndPost(canvas);
             }
 
+        }
+
+        public Bitmap flipImage(Bitmap source) {
+            //deklarasi matrik untuk flip Bitmap
+            Matrix matrix = new Matrix();
+            //jika isFlip sama dengan true, kalikan flip dg -1
+            if (isFlip)
+                flip *= -1.0f;
+            // set matrix prescale untuk membalikkan posisi bitmap
+            matrix.preScale(flip, 1.0f);
+            return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
         }
 
         // If SimpleGameEngine Activity is paused/stopped
